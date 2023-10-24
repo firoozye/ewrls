@@ -1,0 +1,13 @@
+*.csv
+*.ods
+*.xlsx
+*.txt
+*.zip
+*.swp
+.hypothesis/
+.vscode/
+.idea/
+Dockerfile
+__pycache__/
+*/__pycache__/
+logs/
