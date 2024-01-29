@@ -5,9 +5,13 @@ import numpy as np
 import pandas as pd
 # import statsmodels.api as sm
 from statsmodels import api as sm
+import sys
 # from strat_macro_qrv.models.recursive_ls.rls.recursive_ols import RecursiveOLS
 # from strat_macro_qrv.models.recursive_ls.rls.ewrls import EWRLSRidge
-from utilities.settings import LOGGER
+ #..src.utilities import LOGGER
+sys.path.append('../src')
+from utilities import LOGGER #as LOGGER
+
 
 
 class MyTestCase(unittest.TestCase):
