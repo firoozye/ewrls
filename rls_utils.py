@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 
-from utilities.settings import LOGGER
-from.ewrls import EWRLSRidge
+from utils.settings import LOGGER
+from ewrls.ewrls import EWRLSRidge
 
 
 class FeatureNormalizer(object):
@@ -65,7 +65,7 @@ class FeatureNormalizer(object):
         # ASSERT expwtsd =pd.Series([x[0] for x in self.series_normalizers[col].in_sample_std]]
         # ser1 = pd.Series([x[0] for x in self.series_normalizers[col].prediction_error_t_tminus1]).ewm(span=self.span).std()
         #   ==
-        # self.nobs = exog.shape[0]
+        # self.nobs_window = exog.shape[0]
         # if type(exog) == pd.Series:
         #     self.type = pd.Series
         # else:
@@ -112,7 +112,7 @@ class FeatureNormalizer(object):
         #     self.mean = exog_mean.iloc[-1, :]
         #     self.stdev = exog_stdev.iloc[-1, :]
         #
-        # self.nobs = len(exog_norm)
+        # self.nobs_window = len(exog_norm)
         # return exog_norm  # return pd.DataFrame or pd.Series
 
     def update(self, exog_obs):
@@ -129,6 +129,34 @@ class FeatureNormalizer(object):
         if self.const:
             exog_norm = pd.concat([exog_non_const['const'], exog_norm], axis=1)  # put the constant back in
         return exog_norm  # return an observation
+
+
+def slice2col(x: pd.Series) -> np.ndarray:
+    return x.values[:, np.newaxis]
+
+def column_vector(x_update):
+    if len(x_update.shape) > 1:
+        if (x_update.shape[0] > 1) and (x_update.shape[1] > 1):
+            raise FloatingPointError('Supplied full matrix, where col vector, '
+                                     'row vector or vector needed')
+        elif x_update.shape[0] == 1:
+            x_update = x_update.T  # transform into (k,1) vector
+        elif x_update.shape[1] == 1:
+            pass  # already col vector
+    if len(x_update.shape) == 1:
+        x_update = x_update[:, np.newaxis]
+        # change (k,) into (k,1) i.e., column vector
+    return x_update
+
+def array2float(y):
+    if type(y) is pd.Series:
+        return y[0]
+    if type(y) is pd.DataFrame:
+        return y.iloc[0, 0]
+    if type(y) is np.ndarray:
+        return column_vector(y)[0, 0]
+    else:  # float or int
+        return y
 
 
 def vol_scale_forecast(unscaled_predictions, target_response,

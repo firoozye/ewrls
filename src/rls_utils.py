@@ -65,7 +65,7 @@ class FeatureNormalizer(object):
         # ASSERT expwtsd =pd.Series([x[0] for x in self.series_normalizers[col].in_sample_std]]
         # ser1 = pd.Series([x[0] for x in self.series_normalizers[col].prediction_error_t_tminus1]).ewm(span=self.span).std()
         #   ==
-        # self.nobs = exog.shape[0]
+        # self.nobs_window = exog.shape[0]
         # if type(exog) == pd.Series:
         #     self.type = pd.Series
         # else:
@@ -112,7 +112,7 @@ class FeatureNormalizer(object):
         #     self.mean = exog_mean.iloc[-1, :]
         #     self.stdev = exog_stdev.iloc[-1, :]
         #
-        # self.nobs = len(exog_norm)
+        # self.nobs_window = len(exog_norm)
         # return exog_norm  # return pd.DataFrame or pd.Series
 
     def update(self, exog_obs):

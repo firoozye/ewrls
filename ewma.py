@@ -34,13 +34,14 @@ def ewma_vectorized_safe(data, alpha, row_size=None, dtype=None, order='C', out=
     """
     data = np.array(data, copy=False)
 
-    if dtype is None:
-        if data.dtype == np.float32:
-            dtype = np.float32
-        else:
-            dtype = np.float
-    else:
-        dtype = np.dtype(dtype)
+    # if dtype is None:
+    #     if data.dtype == np.float32:
+    #         dtype = np.float32
+    #     else:
+    #         dtype = np.float
+    # else:
+    #     dtype = np.dtype(dtype)
+    dtype = np.float64
 
     if row_size is not None:
         row_size = int(row_size)
@@ -107,6 +108,8 @@ def get_max_row_size(alpha, dtype=float):
     # Use np.finfo(dtype).eps if you  are worried about accuracy
     # and want to be extra safe.
     epsilon = np.finfo(dtype).tiny
+    epsilon = 1E-100
+    alpha = 1E-5
     # If this produces an OverflowError, make epsilon larger
     return int(np.log(epsilon) / np.log(1 - alpha)) + 1
 
@@ -142,7 +145,7 @@ def ewma_vectorized(data, alpha, offset=None, dtype=None, order='C', out=None):
 
     if data.ndim > 1:
         # flatten input
-        data = data.reshape(-1, order)
+        data = data.reshape(-1, order=order)
 
     if out is None:
         out = np.empty_like(data, dtype=dtype)

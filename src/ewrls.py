@@ -107,10 +107,10 @@ class EWRLSRidge(object):
                 cutoff = max(nobs - window, 0)
                 self.update(self.y_train[:cutoff], self.x_train[:cutoff, :])
                 sse1 = self.sse
-                nobs1 = self.nobs
+                nobs1 = self.nobs_window
                 self.update(self.y_train[cutoff:], self.x_train[cutoff:, :])
                 sse2 = self.sse
-                nobs2 = self.nobs
+                nobs2 = self.nobs_window
                 windowed_mse = (sse2 - sse1) / (nobs2 - nobs1)
                 self.windowed_mse = windowed_mse
             else:
@@ -494,7 +494,7 @@ class EWRLSRidge(object):
         formatted_str += "self.regularization ={}\n".format(self.regularization)
         formatted_str += "self.beta  = {}\n".format(self.beta.state)
         formatted_str += "self.p  = {}\n".format(self.p)
-        formatted_str += "self.nobs = {}\n".format(self.nobs)
+        formatted_str += "self.nobs_window = {}\n".format(self.nobs)
         formatted_str += "self.sse = {}\n".format(self.sse)
         if log:
             LOGGER.info(formatted_str)
@@ -629,7 +629,7 @@ class EWRLSChangePoint(EWRLSRidge):
         super()._run_update(y_t, x_t, save=save)
         self.nobs_total += 1
         # TODO: Make recursive method here, save prediction_error_t_tminus1[-self.overlap]
-        #  if nobs>windowsize and then delete entry
+        #  if nobs_window>windowsize and then delete entry
         length = max(self.nobs, self.overlap)
         self.cusumsqr.update(np.mean(self.prediction_error_t_tminus1.total_history[-length:] ** 2))
 
@@ -778,7 +778,7 @@ class EWRLSChangePoint(EWRLSRidge):
 
     def _save_history(self):
         # and SAVE_Update self.nobs_total = previous _run_update, DO not append, but only append
-        # from previous _run_update (need two vaiables. if nobs = current run, nobs_total now
+        # from previous _run_update (need two vaiables. if nobs_window = current run, nobs_total now
         # is previous _run_update, then nobs_current must be set to current total
         pass
 
@@ -1180,7 +1180,7 @@ class CR_RLS(EWRLSRidge):
         def cv_objective(self, span=None, regularization=None,
                          sparse_regularization=None):
             # default to original span and regularization
-            nobs = len(self.y_train)  # self.nobs
+            nobs = len(self.y_train)  # self.nobs_window
             # TODO: check if pass None to reset? Also in parent class
             self.reset(span=span,
                        regularization=regularization,
@@ -1190,10 +1190,10 @@ class CR_RLS(EWRLSRidge):
                 cutoff = max(nobs - window, 0)
                 self.update(self.y_train[:cutoff], self.x_train[:cutoff, :])
                 sse1 = self.sse
-                nobs1 = self.nobs
+                nobs1 = self.nobs_window
                 self.update(self.y_train[cutoff:], self.x_train[cutoff:, :])
                 sse2 = self.sse
-                nobs2 = self.nobs
+                nobs2 = self.nobs_window
                 windowed_mse = (sse2 - sse1) / (nobs2 - nobs1)
                 self.windowed_mse = windowed_mse
             else:

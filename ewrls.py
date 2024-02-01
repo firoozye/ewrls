@@ -108,10 +108,10 @@ class EWRLSRidge(object):
                 cutoff = max(nobs - window, 0)
                 self.update(self.y_train[:cutoff], self.x_train[:cutoff, :])
                 sse1 = self.sse
-                nobs1 = self.nobs
+                nobs1 = self.nobs_window
                 self.update(self.y_train[cutoff:], self.x_train[cutoff:, :])
                 sse2 = self.sse
-                nobs2 = self.nobs
+                nobs2 = self.nobs_window
                 windowed_mse = (sse2 - sse1) / (nobs2 - nobs1)
                 self.windowed_mse = windowed_mse
             else:
@@ -495,7 +495,7 @@ class EWRLSRidge(object):
         formatted_str += "self.regularization ={}\n".format(self.regularization)
         formatted_str += "self.beta  = {}\n".format(self.beta.state)
         formatted_str += "self.p  = {}\n".format(self.p)
-        formatted_str += "self.nobs = {}\n".format(self.nobs)
+        formatted_str += "self.nobs_window = {}\n".format(self.nobs)
         formatted_str += "self.sse = {}\n".format(self.sse)
         if log:
             LOGGER.info(formatted_str)
@@ -549,7 +549,7 @@ class EWRLSRidge(object):
             # change (k,) into (k,1) i.e., column vector
         return x_update
 
-    def _array2float(self, y) -> np.float:
+    def _array2float(self, y):
         if type(y) is pd.Series:
             return y[0]
         if type(y) is pd.DataFrame:
@@ -584,8 +584,8 @@ class EWRLSChangePoint(EWRLSRidge):
             self.change_times = []
         # Exactly 4 break detectors stat vs trailiing history
         self.detectordict = {
-            'forecast_fit': self.forecast_fit, 'first_diff': self.first_diff,
-            'second_diff': self.second_diff, 'beta_diff': self.beta_diff}
+            'forecast_fit': self.test_forecast_fit, 'first_diff': self.test_first_diff,
+            'second_diff': self.test_second_diff, 'beta_diff': self.test_beta_diff}
         if change_detector_list != []:
             self.change_detectors = [BreakDetector(name=func_str,
                                                    func=self.detectordict[func_str],
@@ -630,9 +630,10 @@ class EWRLSChangePoint(EWRLSRidge):
         super()._run_update(y_t, x_t, save=save)
         self.nobs_total += 1
         # TODO: Make recursive method here, save prediction_error_t_tminus1[-self.overlap]
-        #  if nobs>windowsize and then delete entry
+        #  if nobs_window>windowsize and then delete entry
         length = max(self.nobs, self.overlap)
-        self.cusumsqr.update(np.mean(self.prediction_error_t_tminus1.total_history[-length:] ** 2))
+        self.cusumsqr.update(np.mean(
+            self.prediction_error_t_tminus1.total_history[-length:] ** 2))
 
     def _update_data_vec(self, y_t, x_t, save=True):
         # may do ok with just past 10 days of x_t
@@ -657,7 +658,6 @@ class EWRLSChangePoint(EWRLSRidge):
             x_slice = super()._column_vector(x[t, :])
             self.run_pre_update_tests()
             self._run_update(y_slice, x_slice, save=True)
-            # self._save_history()  # copy over states before check for a break
             self.run_post_update_tests()
             self.decide_reset_model()
 
@@ -706,13 +706,13 @@ class EWRLSChangePoint(EWRLSRidge):
                 # rw model - ignore data and let yhat(t+1) = y(t)
                 self.add_cut_times([self.nobs_total])
 
-    def forecast_fit(self, param_tuple=(0.99, 3.5)):
+    def test_forecast_fit(self, param_tuple=(0.99, 3.5)):
         forget_factor, multiple = param_tuple
         sumsqr_diff_abs = np.abs((self.prediction_error_t_tminus1.total_history))
         ewstd = ewma_vectorized_safe(sumsqr_diff_abs ** 2, alpha=1 - forget_factor) ** 0.5
         return (sumsqr_diff_abs[-1] - multiple * ewstd[-1])
 
-    def beta_diff(self, param_tuple=(0.99, 3.5)):
+    def test_beta_diff(self, param_tuple=(0.99, 3.5)):
         forget_factor, multiple = param_tuple
         if self.beta.total_history.shape[1] == 1:
             return -1 * np.inf
@@ -720,13 +720,13 @@ class EWRLSChangePoint(EWRLSRidge):
         ewstd = ewma_vectorized_safe(l2_norm_diff ** 2, alpha=1 - forget_factor) ** 0.5
         return (l2_norm_diff[-1] - multiple * ewstd[-1])
 
-    def first_diff(self, param_tuple=(0.99, 3.5)):
+    def test_first_diff(self, param_tuple=(0.99, 3.5)):
         forget_factor, multiple = param_tuple
         sumsqr_diff_abs = np.abs(np.append([0.0] * 1, np.diff(self.y.total_history, 1)))
         ewstd = ewma_vectorized_safe(sumsqr_diff_abs ** 2, alpha=1 - forget_factor) ** 0.5
         return (sumsqr_diff_abs[-1] - multiple * ewstd[-1])
 
-    def second_diff(self, param_tuple=(0.99, 3.5)):
+    def test_second_diff(self, param_tuple=(0.99, 3.5)):
         # TODO: Make sure ewma works with nan data!
         forget_factor, multiple = param_tuple
         sumsqr_diff_abs = np.abs(np.append([0.0] * 2, np.diff(self.y.total_history, 2)))
@@ -779,7 +779,7 @@ class EWRLSChangePoint(EWRLSRidge):
 
     def _save_history(self):
         # and SAVE_Update self.nobs_total = previous _run_update, DO not append, but only append
-        # from previous _run_update (need two vaiables. if nobs = current run, nobs_total now
+        # from previous _run_update (need two vaiables. if nobs_window = current run, nobs_total now
         # is previous _run_update, then nobs_current must be set to current total
         pass
 
@@ -995,7 +995,7 @@ class CR_RLS(EWRLSRidge):
         def cv_objective(self, span=None, regularization=None,
                          sparse_regularization=None):
             # default to original span and regularization
-            nobs = len(self.y_train)  # self.nobs
+            nobs = len(self.y_train)  # self.nobs_window
             # TODO: check if pass None to reset? Also in parent class
             self.reset(span=span,
                        regularization=regularization,
@@ -1005,10 +1005,10 @@ class CR_RLS(EWRLSRidge):
                 cutoff = max(nobs - window, 0)
                 self.update(self.y_train[:cutoff], self.x_train[:cutoff, :])
                 sse1 = self.sse
-                nobs1 = self.nobs
+                nobs1 = self.nobs_window
                 self.update(self.y_train[cutoff:], self.x_train[cutoff:, :])
                 sse2 = self.sse
-                nobs2 = self.nobs
+                nobs2 = self.nobs_window
                 windowed_mse = (sse2 - sse1) / (nobs2 - nobs1)
                 self.windowed_mse = windowed_mse
             else:
