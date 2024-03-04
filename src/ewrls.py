@@ -1055,7 +1055,7 @@ class EWRLSBatch(EWRLSRidge):
         self.beta.update(restricted_fit.params, save=save)
 
         # mse = restricted_fit.mse_total
-        # df = restricted_fit.df_model  # deg of freedom
+        # features = restricted_fit.df_model  # deg of freedom
         #
         # tvalues = restricted_fit.tvalues  # regularised fitt does not have tvalues
         #
