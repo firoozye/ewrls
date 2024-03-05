@@ -64,7 +64,7 @@ class EWRLSRidge(object):
 
         self.p = (1.0 / self.regularization) * np.eye(num_features)
         # start with small pos def matrix? Note for first k obs Sigma will be rank deficient
-        # otherwise and p = Sigma^(-1)
+        # otherwise and bag_no = Sigma^(-1)
         self._initialize_predictions()
 
     def __repr__(self):
